@@ -134,11 +134,9 @@ class TrainedNN:
         for i in range(len(self.core_nums) - 1):
             self.h_fc[i] = tf.nn.leaky_relu(tf.matmul(self.h_fc_drop[i], self.w_fc[i]) + self.b_fc[i])
             self.h_fc_drop[i + 1] = tf.nn.dropout(self.h_fc[i], self.keep_prob)
-        #self.h_fc[len(self.core_nums) - 1] = tf.matmul(self.h_fc_drop[len(self.core_nums) - 1],
-        #                                               self.w_fc[]) + self.b_fc[i]
 
-        self.cross_entropy = tf.reduce_mean(tf.losses.mean_squared_error(self.y_, self.h_fc[len(self.core_nums) - 2]))
-        self.train_step = tf.train.AdamOptimizer(self.learning_rate).minimize(self.cross_entropy)
+        self.mean_squared_error = tf.reduce_mean(tf.losses.mean_squared_error(self.y_, self.h_fc[len(self.core_nums) - 2]))
+        self.train_step = tf.train.AdamOptimizer(self.learning_rate).minimize(self.mean_squared_error)
         self.sess.run(tf.global_variables_initializer())
 
         last_err = 0
@@ -149,10 +147,10 @@ class TrainedNN:
                                      self.keep_prob: self.keep_ratio})
             # check every 1000 steps
             if step % 1000 == 0:
-                err = self.sess.run(self.cross_entropy, feed_dict={self.h_fc_drop[0]: np.array([self.train_x]).T,
+                err = self.sess.run(self.mean_squared_error, feed_dict={self.h_fc_drop[0]: np.array([self.train_x]).T,
                                                                    self.y_: np.array([self.train_y]).T,
                                                                    self.keep_prob: 1.0})
-                print("step: %d, cross_entropy: %f" % (step, err))
+                print("step: %d, mean_squared_error: %f" % (step, err))
                 if step == 0:
                     last_err = err
                 # use threhold to stop train
@@ -170,7 +168,7 @@ class TrainedNN:
 
     # calculate mean error
     def cal_err(self):
-        mean_err = self.sess.run(self.cross_entropy, feed_dict={self.h_fc_drop[0]: np.array([self.train_x]).T, self.y_: np.array([self.train_y]).T, self.keep_prob: 1.0})
+        mean_err = self.sess.run(self.mean_squared_error, feed_dict={self.h_fc_drop[0]: np.array([self.train_x]).T, self.y_: np.array([self.train_y]).T, self.keep_prob: 1.0})
         return mean_err
 
     # save model
