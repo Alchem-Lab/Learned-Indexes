@@ -16,6 +16,7 @@ class Distribution(Enum):
     NORMAL = 4
     LOGNORMAL = 5
 
+
 # store path
 filePath = {
     Distribution.RANDOM: "data/random.csv",
@@ -45,6 +46,7 @@ toStorePath = {
     Distribution.LOGNORMAL: "data/lognormal_t.csv"
 }
 
+
 # create data
 def create_data(distribution, data_size=SIZE):
     if distribution == Distribution.RANDOM:
@@ -70,11 +72,11 @@ def create_data(distribution, data_size=SIZE):
                 i += 1
         elif distribution == Distribution.LOGNORMAL:
             for d in data:
-                csv_writer.writerow([int(d * 10000), i / BLOCK_SIZE])
+                csv_writer.writerow([int(d * 1000000), i])
                 i += 1
         else:
             for d in data:
-                csv_writer.writerow([int(d), i / BLOCK_SIZE])
+                csv_writer.writerow([int(d * 1000), i])
                 i += 1
 
 
@@ -100,17 +102,18 @@ def create_data_storage(distribution, learning_percent=0.5, data_size=SIZE):
             store_bits.append(random.randint(0, 4))
     else:
         for i in range(data_size):
-            store_bits.append(random.randint(0, int(1.0 / learning_percent) - 1))
+            store_bits.append(random.randint(
+                0, int(1.0 / learning_percent) - 1))
     i = 0
     insert_data = []
     with open(store_path, 'wb') as csvFile:
         csv_writer = csv.writer(csvFile)
-        #deal with sample training and storage optimization
+        # deal with sample training and storage optimization
         if distribution == Distribution.EXPONENTIAL:
             if learning_percent == 0.8:
                 for ind in range(data_size):
                     din = int(data[ind] * 10000000)
-                    if store_bits[ind] != 0:                        
+                    if store_bits[ind] != 0:
                         csv_writer.writerow([din, i / BLOCK_SIZE])
                         i += 1
                     else:
@@ -118,7 +121,7 @@ def create_data_storage(distribution, learning_percent=0.5, data_size=SIZE):
             else:
                 for ind in range(data_size):
                     din = int(data[ind] * 10000000)
-                    if store_bits[ind] == 0:                        
+                    if store_bits[ind] == 0:
                         csv_writer.writerow([din, i / BLOCK_SIZE])
                         i += 1
                     else:
@@ -126,11 +129,14 @@ def create_data_storage(distribution, learning_percent=0.5, data_size=SIZE):
         elif distribution == Distribution.LOGNORMAL:
             for d in data:
                 din = int(d * 10000)
+        elif distribution == Distribution.POISSON:
+            for d in data:
+                din = int(d * 10000)
         else:
             if learning_percent == 0.8:
                 for ind in range(data_size):
                     din = int(data[ind])
-                    if store_bits[ind] != 0:                        
+                    if store_bits[ind] != 0:
                         csv_writer.writerow([din, i / BLOCK_SIZE])
                         i += 1
                     else:
@@ -138,12 +144,12 @@ def create_data_storage(distribution, learning_percent=0.5, data_size=SIZE):
             else:
                 for ind in range(data_size):
                     din = int(data[ind])
-                    if store_bits[ind] == 0:                        
+                    if store_bits[ind] == 0:
                         csv_writer.writerow([din, i / BLOCK_SIZE])
                         i += 1
                     else:
                         insert_data.append(din)
-    random.shuffle(insert_data) 
+    random.shuffle(insert_data)
     with open(to_store_path, 'wb') as csvFile:
         csv_writer = csv.writer(csvFile)
         for din in insert_data:

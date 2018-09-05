@@ -38,10 +38,10 @@ class Parameter:
 
 # parameter pool
 class ParameterPool(Enum):
-    RANDOM = Parameter(stages=[1, 10], cores=[[1, 1], [1, 1]], train_steps=[20000, 20000],
-                       batch_sizes=[50, 50], learning_rates=[0.0001, 0.0001], keep_ratios=[1.0, 1.0])
-    LOGNORMAL = Parameter(stages=[1, 100], cores=[[1, 16, 16, 1], [1, 8, 1]], train_steps=[2000, 400],
-                          batch_sizes=[100, 50], learning_rates=[0.0001, 0.001], keep_ratios=[1.0, 0.9])
+    RANDOM = Parameter(stages=[1, 16], cores=[[1, 32, 32, 1], [1, 8, 1]], train_steps=[20000, 20000],
+                       batch_sizes=[64, 64], learning_rates=[0.001, 0.0001], keep_ratios=[1.0, 1.0])
+    LOGNORMAL = Parameter(stages=[1, 128], cores=[[1, 32, 32, 1], [1, 8, 1]], train_steps=[100000, 50000],
+                          batch_sizes=[1024, 64], learning_rates=[0.001, 0.001], keep_ratios=[1.0, 0.9])
     EXPONENTIAL = Parameter(stages=[1, 100], cores=[[1, 8, 1], [1, 8, 1]], train_steps=[30000, 20000],
                             batch_sizes=[50, 50], learning_rates=[0.0001, 0.001], keep_ratios=[0.9, 1.0])
     # EXPONENTIAL = Parameter(stages=[1, 100], cores=[[1, 16, 16, 1], [1, 8, 1]], train_steps=[20000, 300],
@@ -65,7 +65,7 @@ def weight_variable(shape):
         initial = tf.constant(0.1, shape=shape)
     return tf.Variable(initial)
 
-# initialize 
+# initialize
 def bias_variable(shape):
     initial = tf.constant(0.1, shape=shape)
     return tf.Variable(initial)
@@ -74,7 +74,7 @@ def bias_variable(shape):
 class AbstractNN:
     def __init__(self, weights, bias, core_nums, mean_err):
         self.weights = weights
-        self.bias = bias        
+        self.bias = bias
         self.core_nums = core_nums
         self.mean_err = mean_err
 
@@ -116,7 +116,7 @@ class TrainedNN:
         self.h_fc = [None for i in range(len(self.core_nums))]
         self.h_fc_drop = [None for i in range(len(self.core_nums))]
         self.h_fc_drop[0] = tf.placeholder(tf.float32, shape=[None, self.core_nums[0]])
-        self.keep_prob = tf.placeholder(tf.float32)        
+        self.keep_prob = tf.placeholder(tf.float32)
 
     # get next batch of data
     def next_batch(self):
@@ -132,28 +132,30 @@ class TrainedNN:
     # train model
     def train(self):
         for i in range(len(self.core_nums) - 1):
-            self.h_fc[i] = tf.nn.relu(tf.matmul(self.h_fc_drop[i], self.w_fc[i]) + self.b_fc[i])
+            self.h_fc[i] = tf.nn.leaky_relu(tf.matmul(self.h_fc_drop[i], self.w_fc[i]) + self.b_fc[i])
             self.h_fc_drop[i + 1] = tf.nn.dropout(self.h_fc[i], self.keep_prob)
+        #self.h_fc[len(self.core_nums) - 1] = tf.matmul(self.h_fc_drop[len(self.core_nums) - 1],
+        #                                               self.w_fc[]) + self.b_fc[i]
 
         self.cross_entropy = tf.reduce_mean(tf.losses.mean_squared_error(self.y_, self.h_fc[len(self.core_nums) - 2]))
         self.train_step = tf.train.AdamOptimizer(self.learning_rate).minimize(self.cross_entropy)
         self.sess.run(tf.global_variables_initializer())
-        
+
         last_err = 0
         err_count = 0
         for step in range(0, self.train_step_nums):
             self.sess.run(self.train_step,
                           feed_dict={self.h_fc_drop[0]: self.batch_x, self.y_: self.batch_y,
-                                     self.keep_prob: self.keep_ratio})            
-            # check every 100 steps
-            if step % 100 == 0:
+                                     self.keep_prob: self.keep_ratio})
+            # check every 1000 steps
+            if step % 1000 == 0:
                 err = self.sess.run(self.cross_entropy, feed_dict={self.h_fc_drop[0]: np.array([self.train_x]).T,
                                                                    self.y_: np.array([self.train_y]).T,
                                                                    self.keep_prob: 1.0})
-                print("cross_entropy: %f" % err)
+                print("step: %d, cross_entropy: %f" % (step, err))
                 if step == 0:
-                    last_err = err 
-                # use threhold to stop train 
+                    last_err = err
+                # use threhold to stop train
                 if self.useThreshold:
                     if err < self.threshold_nums:
                         return
@@ -164,13 +166,11 @@ class TrainedNN:
                         return
                 last_err = err
 
-            self.next_batch()    
+            self.next_batch()
 
     # calculate mean error
     def cal_err(self):
-        mean_err = self.sess.run(self.cross_entropy, feed_dict={self.h_fc_drop[0]: np.array([self.train_x]).T,
-                                                                self.y_: np.array([self.train_y]).T,
-                                                                self.keep_prob: 1.0})
+        mean_err = self.sess.run(self.cross_entropy, feed_dict={self.h_fc_drop[0]: np.array([self.train_x]).T, self.y_: np.array([self.train_y]).T, self.keep_prob: 1.0})
         return mean_err
 
     # save model
