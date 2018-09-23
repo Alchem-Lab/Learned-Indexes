@@ -50,7 +50,8 @@ toStorePath = {
 # create data
 def create_data(distribution, data_size=SIZE):
     if distribution == Distribution.RANDOM:
-        data = random.sample(range(data_size * 2), data_size)
+        # data = random.sample(range(data_size * 2), data_size)
+        data = np.random.normal(1000000, 100000, size=data_size)
     elif distribution == Distribution.BINOMIAL:
         data = np.random.binomial(100, 0.5, size=data_size)
     elif distribution == Distribution.POISSON:
@@ -68,7 +69,7 @@ def create_data(distribution, data_size=SIZE):
         i = 0
         if distribution == Distribution.EXPONENTIAL:
             for d in data:
-                csv_writer.writerow([int(d * 10000000), i / BLOCK_SIZE])
+                csv_writer.writerow([int(d * 10000000), i])
                 i += 1
         elif distribution == Distribution.LOGNORMAL:
             for d in data:
